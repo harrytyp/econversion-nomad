@@ -57,7 +57,7 @@ def import_experiment(experiment_id, config=None):
 
     elab_url = elab.get('api_url', 'https://elntest.ub.tum.de/api/v2')
     elab_key = elab.get('api_key', '')
-    nomad_url = nomad_cfg.get('api_url', 'http://localhost:8000/api/v1')
+    nomad_url = nomad_cfg.get('api_url', 'http://localhost:8000/nomad-oasis/api/v1')
     nomad_key = nomad_cfg.get('api_key', '')
 
     # Step 1: Fetch from elabFTW

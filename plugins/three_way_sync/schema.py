@@ -107,3 +107,14 @@ class ElabftwMachineUpload(ElabftwLinkedEntry):
     experiment created.
     """
     pass
+
+
+# NOMAD schema package registration
+from nomad.metainfo.metainfo import SchemaPackage
+
+m_package = SchemaPackage(
+    aliases=[
+        "three_way_sync.schema:ElabftwLinkedEntry",
+        "three_way_sync.schema:ElabftwMachineUpload",
+    ]
+)
