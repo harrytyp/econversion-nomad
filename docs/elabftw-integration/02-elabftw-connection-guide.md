@@ -64,7 +64,9 @@ This means experiments linked in elabFTW become linked in NOMAD automatically.
 
 ### Getting an elabFTW API Token
 
-1. Log into your elabFTW instance
+Each user needs their own token. **Do not share tokens.**
+
+1. Log into your elabFTW instance (e.g. `https://elntest.ub.tum.de`)
 2. Go to **My Account → API tokens**
 3. Click **Add an API key**
 4. Give it a descriptive name (e.g. `nomad-sync`)

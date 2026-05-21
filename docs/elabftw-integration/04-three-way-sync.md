@@ -46,12 +46,18 @@ User lands on NOMAD entry page
 ## File Layout
 
 ```
-plugins/three_way_sync/
-├── __init__.py       Package init
-├── schema.py         ELN schemas for elabFTW linking
-├── normalizer.py     NOMAD normalizer (auto-link on save)
-├── webhook.py        Flask webhook + CLI importer
-└── config.yaml       Shared credentials (template below)
+plugins/
+├── three_way_sync/              ← Active bidirectional bridge
+│   ├── __init__.py              Package init
+│   ├── entrypoint.py            BridgeEntryPoint for NOMAD GUI registration
+│   ├── schema.py                ELN schemas (ElabftwLinkedEntry, ElabftwMachineUpload)
+│   ├── normalizer.py            NOMAD normalizer (auto-link on save)
+│   ├── webhook.py               Flask webhook + CLI importer
+│   ├── config.yaml.template     User fills in their own API tokens
+│   └── pyproject.toml           Entry points for NOMAD discovery
+├── elabftw_linker/              ← Legacy (simple cross-referencing)
+├── startup.sh                   ← Copies egg-info to site-packages on boot
+└── three_way_nomad_bridge.egg-info/  ← NOMAD plugin entry points
 ```
 
 ## Setup on Server
@@ -62,17 +68,18 @@ plugins/three_way_sync/
 cd ~
 git clone https://github.com/harrytyp/econversion-nomad.git
 cp -r econversion-nomad/plugins/three_way_sync ~/nomad-distro-template/plugins/
+cp -r econversion-nomad/plugins/three_way_nomad_bridge.egg-info ~/nomad-distro-template/plugins/
 ```
 
-### 2. Create config
+### 2. Create config (each user uses their own API tokens)
 
 ```bash
 cp ~/nomad-distro-template/plugins/three_way_sync/config.yaml.template \
    ~/nomad-distro-template/plugins/three_way_sync/config.yaml
-# Edit with your API keys
+# Edit with YOUR API keys (not shared credentials)
 ```
 
-### 3. Install Flask for webhook
+### 3. Install Flask for webhook server
 
 ```bash
 docker exec nomad_oasis_app pip install flask
@@ -89,6 +96,34 @@ docker exec nomad_oasis_app python3 \
 docker exec nomad_oasis_app python3 \
   /app/plugins/three_way_sync/webhook.py serve 8081
 ```
+
+## Persistence (Docker Rebuild)
+
+The plugin entry points are stored in `plugins/three_way_nomad_bridge.egg-info/`
+(volume-mounted). For them to survive container recreation, two things are needed:
+
+**Option A (current, survives restarts):** The `.pth` file in site-packages
+tells Python to scan `/app/plugins` for egg-info at startup. This is set up
+on the server and works across container restarts.
+
+**Option B (for container recreation):** Override the NOMAD app command to
+run `startup.sh` before starting NOMAD. This copies the egg-info to
+site-packages:
+
+```yaml
+# In docker-compose.yaml, change the app command to:
+command: bash /app/plugins/startup.sh
+```
+
+Then mount the script:
+```yaml
+volumes:
+  - ./plugins/startup.sh:/app/plugins/startup.sh:ro
+  - ./plugins/three_way_nomad_bridge.egg-info:/app/plugins/three_way_nomad_bridge.egg-info:ro
+```
+
+**Option C (most durable):** Rebuild the Docker image with the plugin as
+a proper dependency (see `02-elabftw-plugin-install.md`).
 
 ## Adding "Send to NOMAD" to elabFTW
 
@@ -108,13 +143,13 @@ to the newly created entry page.
 When a machine uploads data to NOMAD:
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/uploads \
-  -H "Authorization: Bearer YOUR_NOMAD_KEY" \
+curl -X POST http://localhost:8000/nomad-oasis/api/v1/uploads \
+  -H "Authorization: Bearer YOUR_NOMAD_TOKEN" \
   -d '{"upload_name": "Sensor data 2026-05-21"}'
 
 # Then create entry with ElabftwMachineUpload schema
-curl -X POST http://localhost:8000/api/v1/uploads/{upload_id}/archive \
-  -H "Authorization: Bearer YOUR_NOMAD_KEY" \
+curl -X POST http://localhost:8000/nomad-oasis/api/v1/uploads/{upload_id}/archive \
+  -H "Authorization: Bearer YOUR_NOMAD_TOKEN" \
   -d '{
     "entry_name": "Sensor batch #42",
     "data": {
