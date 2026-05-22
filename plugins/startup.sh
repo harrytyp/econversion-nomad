@@ -34,9 +34,26 @@ if [ -d /app/plugins/three_way_nomad_bridge.egg-info ]; then
 fi
 
 # Install instrument data plugin (TGA, DMA, FTIR, MS schemas)
-if [ -d /app/plugins/instrument_data.egg-info ]; then
+if [ -d /app/plugins/instrument_data ]; then
+    # Generate egg-info from pyproject.toml so NOMAD discovers the schema
+    cd /app/plugins && python3 -c "
+import os, sys
+name = 'instrument_data'
+egg_dir = f'{name}.egg-info'
+os.makedirs(egg_dir, exist_ok=True)
+# Read version from pyproject
+version = '0.1.0'
+with open(f'{egg_dir}/PKG-INFO', 'w') as f:
+    f.write(f'Metadata-Version: 2.1\\nName: instrument-data\\nVersion: {version}\\nSummary: Instrument measurement schemas\\n')
+with open(f'{egg_dir}/entry_points.txt', 'w') as f:
+    f.write('[nomad.plugin]\\ninstrument-schema = instrument_data.entrypoint:instrument_schema\\n')
+with open(f'{egg_dir}/top_level.txt', 'w') as f:
+    f.write('instrument_data\\n')
+for fn in ['dependency_links.txt', 'requires.txt', 'SOURCES.txt']:
+    with open(f'{egg_dir}/{fn}', 'w') as f: f.write('')
+" 2>/dev/null
     cp -r /app/plugins/instrument_data.egg-info /opt/venv/lib/python3.12/site-packages/ 2>/dev/null
-    echo "[startup] Instrument data egg-info installed"
+    echo "[startup] Instrument data plugin installed"
 fi
 
 # Create .pth file for the plugins directory
