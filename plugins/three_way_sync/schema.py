@@ -28,6 +28,12 @@ class ElabftwExpRef(MSection):
 
 class ElabftwSyncConfig(MSection):
     """Configuration for elabFTW sync."""
+    entity_type = Quantity(
+        type=str,
+        default="experiment",
+        description="elabFTW entity type: experiment or item",
+        a_eln=ELNAnnotation(component="StringEditQuantity"),
+    )
     api_base_url = Quantity(type=str, description="elabFTW API URL", a_eln=ELNAnnotation(component="StringEditQuantity"))
     api_key = Quantity(type=str, description="elabFTW API key (cleared after sync)", a_eln=ELNAnnotation(component="StringEditQuantity", props=dict(type="password")))
     sync_now = Quantity(type=bool, default=False, description="Toggle to sync now", a_eln=ELNAnnotation(component="BoolEditQuantity"))
