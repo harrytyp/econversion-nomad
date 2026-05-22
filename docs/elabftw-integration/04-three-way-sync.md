@@ -47,15 +47,16 @@ User lands on NOMAD entry page
 
 ```
 plugins/
+├── elabftw_linker/              ← Legacy (simple cross-referencing)
 ├── three_way_sync/              ← Active bidirectional bridge
 │   ├── __init__.py              Package init
 │   ├── entrypoint.py            BridgeEntryPoint for NOMAD GUI registration
-│   ├── schema.py                ELN schemas (ElabftwLinkedEntry, ElabftwMachineUpload)
+│   ├── schema.py                ELN schemas (ElabftwLinkedEntry, ElabftwMachineUpload, ElabftwSettings)
 │   ├── normalizer.py            NOMAD normalizer (auto-link on save)
 │   ├── webhook.py               Flask webhook + CLI importer
 │   ├── config.yaml.template     User fills in their own API tokens
-│   └── pyproject.toml           Entry points for NOMAD discovery
-├── elabftw_linker/              ← Legacy (simple cross-referencing)
+│   ├── pyproject.toml           Entry points for NOMAD discovery
+│   └── configs/                 Per-user config files (legacy, use Settings entry instead)
 ├── startup.sh                   ← Copies egg-info to site-packages on boot
 └── three_way_nomad_bridge.egg-info/  ← NOMAD plugin entry points
 ```

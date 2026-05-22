@@ -7,9 +7,60 @@ using both the built-in `ElabftwProject` schema and the custom `ElabftwLinkedEnt
 
 ---
 
-## Method A: Quick Sync (ElabftwProject)
+## Method A (Recommended): ElabftwSettings + ElabftwLinkedEntry
 
-Best for: syncing a single experiment into NOMAD.
+Best for: users who want to set their API key once and never type it again.
+
+### Step 1: One-time Setup — Create your Settings
+
+1. **PUBLISH → Uploads → CREATE A NEW UPLOAD → CREATE FROM SCHEMA**
+2. Select **"elabFTW Settings"**
+3. Name it exactly **"elabFTW Settings"** (the normalizer finds it by name)
+4. Fill in:
+   | Field | Value |
+   |-------|-------|
+   | `api_key` | Your personal elabFTW token from `My Account → API tokens` |
+   | `api_base_url` | `https://elntest.ub.tum.de/api/v2` (default) |
+5. Save
+
+Your key is stored in your own private upload. Only you can see it.
+
+### Step 2: Link an elabFTW Experiment/Item to NOMAD
+
+1. **CREATE A NEW UPLOAD → CREATE FROM SCHEMA**
+2. Select **"elabFTW Linked Entry"**
+3. Give it a name
+4. Under **config**:
+   | Field | What to put |
+   |-------|-------------|
+   | `entity_type` | `experiment` (default) or `item` for database resources |
+   | `sync_now` | Toggle to **true** |
+   | `write_link_back` | Keep **true** to write NOMAD URL into elabFTW |
+5. Under **experiments**, click + ADD and fill:
+   | Field | What to put |
+   |-------|-------------|
+   | `elabftw_id` | The elabFTW ID number (e.g. `2339` for experiment, `1354` for item) |
+6. Save
+
+The normalizer:
+- Reads your API key from your Settings entry
+- Fetches the experiment/item title from elabFTW
+- Writes a `NOMAD URL` back into elabFTW's extra fields
+- Clears the API key from the entry data
+
+### Verify
+
+In elabFTW, open the linked experiment/item. Under **Extra fields**, you should see:
+```
+NOMAD URL: https://researchmcp.duckdns.org/...
+NOMAD Synced: 2026-05-22T...
+```
+
+---
+
+## Method B: Quick Sync (ElabftwProject — FAIRmat built-in)
+
+Best for: one-off sync without setting up a personal config.
 
 ### Steps
 
