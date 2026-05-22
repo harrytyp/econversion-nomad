@@ -122,25 +122,21 @@ class ElabftwBridge:
     def add_nomad_link_to_elabftw(self, entity_id: str, nomad_url: str, entity_type: str = None) -> bool:
         etype = entity_type or self._entity_type()
         extra = {"NOMAD URL": nomad_url, "NOMAD Synced": datetime.now(timezone.utc).isoformat()}
+        import json as _json
+        payload = {"metadata": _json.dumps({"extra_fields": extra})}
         try:
             resp = requests.patch(
                 self._endpoint(etype, entity_id),
                 headers=self.headers(),
-                json={"extra_fields": extra},
+                json=payload,
                 timeout=15,
             )
             if resp.status_code in (200, 201, 204):
                 return True
             if resp.status_code == 403:
-                self.logger.warning(f"Write forbidden on {etype} {entity_id} (read-only)")
+                self.logger.warning(f"Write forbidden on {etype} {entity_id}")
                 return False
-            resp = requests.put(
-                self._endpoint(etype, entity_id),
-                headers=self.headers(),
-                json={"extra_fields": extra},
-                timeout=15,
-            )
-            return resp.status_code in (200, 201, 204)
+            return False
         except Exception as e:
             self.logger.error(f"Link-back {etype} {entity_id}: {e}")
         return False
