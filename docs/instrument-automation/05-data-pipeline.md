@@ -27,11 +27,35 @@ NOMAD Entry                          elabFTW Experiment
 (TgaMeasurement structured schema)   (PATCH body + metadata + status="Success")
 ```
 
-## Components to Build
+## Components Built
 
 ### 1. NOMAD Schema Package: `instrument_data`
 
 Location: `plugins/instrument_data/`
+
+**Status: Built** ✅
+
+| File | Purpose |
+|------|---------|
+| `schema.py` | NOMAD EntryData schemas: `TgaMeasurement`, `DmaMeasurement`, `FtrMeasurement`, `MsMeasurement` — each with sample info, method params, signal curves, computed results, and elabFTW ref |
+| `entrypoint.py` | NOMAD plugin registration (`instrument-schema` entry point) |
+| `parser.py` | CSV/TXT parser for TRIOS-exported files — handles tab-separated `[Section]` format, extracts metadata + multi-column signal data |
+| `elabftw_client.py` | elabFTW API client for automation — find experiments, PATCH body/metadata/status, upload files, push TGA results with formatted HTML |
+| `pyproject.toml` | Package metadata with `nomad.plugin` entry point |
+| `instrument_data.egg-info/` | Installed into NOMAD via `startup.sh` |
+
+### 2. Ingest Script: `instrument-ingest`
+
+Location: `scripts/instrument_ingest.py`
+
+**Status: Built** ✅
+
+- **One-shot mode**: `python instrument_ingest.py process <file_or_dir>`
+- **Watch mode**: `python instrument_ingest.py watch <directory>`
+- File detection → format detection → parsing → experiment matching → results computation → elabFTW push-back
+- TGA results: Tg (DTA inflection), residue, onset, mass loss steps (DTG peak detection), Td5/Td10/Td50
+- DMA results: Tg from tan delta peak, Tg from loss modulus peak, storage modulus glassy/rubbery plateaus
+- Dry-run mode: `--dry-run` to preview without writing
 
 ```python
 class TgaMeasurement(EntryData):

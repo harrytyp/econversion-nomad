@@ -33,6 +33,12 @@ if [ -d /app/plugins/three_way_nomad_bridge.egg-info ]; then
     echo "[startup] Bridge egg-info installed"
 fi
 
+# Install instrument data plugin (TGA, DMA, FTIR, MS schemas)
+if [ -d /app/plugins/instrument_data.egg-info ]; then
+    cp -r /app/plugins/instrument_data.egg-info /opt/venv/lib/python3.12/site-packages/ 2>/dev/null
+    echo "[startup] Instrument data egg-info installed"
+fi
+
 # Create .pth file for the plugins directory
 echo "/app/plugins" > /opt/venv/lib/python3.12/site-packages/_bridge_plugins.pth 2>/dev/null
 echo "[startup] Bridge plugins path registered"
