@@ -2,8 +2,8 @@
 # =============================================================================
 # NOMAD Bridge Plugin Startup Hook
 # =============================================================================
-# Runs every time the container starts. Installs the elabFTW bridge plugin.
-# Uses the OFFICIAL NOMAD image — no custom build needed.
+# Runs every time the container starts. Installs the elabFTW bridge plugin
+# and instrument data schemas. Uses the OFFICIAL NOMAD image — no custom build.
 # =============================================================================
 
 set -e
@@ -35,25 +35,24 @@ fi
 
 # Install instrument data plugin (TGA, DMA, FTIR, MS schemas)
 if [ -d /app/plugins/instrument_data ]; then
-    # Generate egg-info from pyproject.toml so NOMAD discovers the schema
-    cd /app/plugins && python3 -c "
-import os, sys
-name = 'instrument_data'
-egg_dir = f'{name}.egg-info'
+    cd /app/plugins
+    python3 << 'PYEOF'
+import os
+name = "instrument_data"
+egg_dir = name + ".egg-info"
 os.makedirs(egg_dir, exist_ok=True)
-# Read version from pyproject
-version = '0.1.0'
-with open(f'{egg_dir}/PKG-INFO', 'w') as f:
-    f.write(f'Metadata-Version: 2.1\\nName: instrument-data\\nVersion: {version}\\nSummary: Instrument measurement schemas\\n')
-with open(f'{egg_dir}/entry_points.txt', 'w') as f:
-    f.write('[nomad.plugin]\\ninstrument-schema = instrument_data.entrypoint:instrument_schema\\n')
-with open(f'{egg_dir}/top_level.txt', 'w') as f:
-    f.write('instrument_data\\n')
-for fn in ['dependency_links.txt', 'requires.txt', 'SOURCES.txt']:
-    with open(f'{egg_dir}/{fn}', 'w') as f: f.write('')
-" 2>/dev/null
+with open(os.path.join(egg_dir, "PKG-INFO"), "w") as f:
+    f.write("Metadata-Version: 2.1\nName: instrument-data\nVersion: 0.1.0\nSummary: Instrument measurement schemas for NOMAD Oasis (TGA, DMA, FTIR, MS)\n")
+with open(os.path.join(egg_dir, "entry_points.txt"), "w") as f:
+    f.write("[nomad.plugin]\ninstrument-schema = instrument_data.entrypoint:instrument_schema\n")
+with open(os.path.join(egg_dir, "top_level.txt"), "w") as f:
+    f.write("instrument_data\n")
+for fn in ["dependency_links.txt", "requires.txt", "SOURCES.txt"]:
+    with open(os.path.join(egg_dir, fn), "w") as f:
+        f.write("")
+PYEOF
     cp -r /app/plugins/instrument_data.egg-info /opt/venv/lib/python3.12/site-packages/ 2>/dev/null
-    echo "[startup] Instrument data plugin installed"
+    echo "[startup] Instrument data plugin installed (TGA, DMA, FTIR, MS schemas)"
 fi
 
 # Create .pth file for the plugins directory
