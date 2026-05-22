@@ -17,3 +17,13 @@ Thumbs.db
 # Environment
 .env
 .venv/
+
+# Instrument sample data — proprietary binary formats, not to be versioned
+tgaautomation/
+sample_files/
+*.tri
+*.trpc
+*.SPA
+*.bin
+*.xls
+*.xlsx

@@ -28,6 +28,7 @@ and restarts NOMAD with the bridge enabled.
 | `plugins/elabftw_linker/` | Legacy (simple cross-referencing) |
 | `docs/installation/` | Oasis deployment + plugin install guides |
 | `docs/elabftw-integration/` | User guides + architecture docs |
+| `docs/instrument-automation/` | **Instrument booking & data pipeline** (TGA, DMA, FTIR, MS) |
 | `docs/ATTRIBUTION.md` | FAIRmat vs custom code credits |
 
 ## How It Works
