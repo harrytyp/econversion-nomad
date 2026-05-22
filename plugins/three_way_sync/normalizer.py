@@ -119,13 +119,23 @@ class ElabftwBridge:
             self.logger.error(f"Create {etype}: {e}")
         return None
 
-    def add_nomad_link_to_elabftw(self, entity_id: str, nomad_url: str, entity_type: str = None) -> bool:
+    def add_nomad_link_to_elabftw(self, entity_id: str, nomad_url: str, entity_type: str = None,
+                                  entry_name: str = "") -> bool:
         etype = entity_type or self._entity_type()
         import json as _json
+        now_str = datetime.now(timezone.utc).isoformat()
+        # Write link to metadata (for programmatic access)
         payload = {"metadata": _json.dumps({
             "nomad_url": nomad_url,
-            "nomad_synced": datetime.now(timezone.utc).isoformat()
+            "nomad_synced": now_str
         })}
+        # Also write a clickable link in the body (for user interaction)
+        body_html = (
+            f"<p>This experiment is linked to NOMAD entry <strong>{_json.dumps(entry_name) if entry_name else 'NOMAD'}</strong>.</p>"
+            f"<p><a href=\"{nomad_url}\" target=\"_blank\" rel=\"noopener noreferrer\">\U0001f517 Open in NOMAD Oasis</a></p>"
+            f"<hr><p><em>Synced via three-way bridge at {now_str}</em></p>"
+        )
+        payload["body"] = body_html
         try:
             resp = requests.patch(
                 self._endpoint(etype, entity_id),
@@ -157,18 +167,19 @@ def normalize(archive, logger) -> Optional[bool]:
         entry_id = getattr(metadata, 'entry_id', None)
         upload_id = getattr(metadata, 'upload_id', None)
         nomad_url = (
-            f"https://researchmcp.duckdns.org/nomad-oasis/gui/user/uploads/entry/{upload_id}/{entry_id}"
-            if upload_id and entry_id else None
+            f"https://researchmcp.duckdns.org/nomad-oasis/gui/search/entries/entry/id/{entry_id}"
+            if entry_id else None
         )
         entity_type = 'experiment'
         if hasattr(data, 'config') and data.config:
             entity_type = getattr(data.config, 'entity_type', 'experiment') or 'experiment'
+        entry_name = getattr(metadata, 'entry_name', None) or getattr(data, 'title', '') or ''
         if external_id:
             eid = str(external_id)
             logger.info(f"Bridge: linking to {entity_type} {eid}")
             entity = bridge.fetch_entity(eid, entity_type)
             if entity and nomad_url:
-                bridge.add_nomad_link_to_elabftw(eid, nomad_url, entity_type)
+                bridge.add_nomad_link_to_elabftw(eid, nomad_url, entity_type, entry_name=entry_name)
         if hasattr(data, 'config') and data.config:
             if getattr(data.config, 'create_elabftw_experiment', False):
                 title = getattr(metadata, 'entry_name', None) or getattr(data, 'title', 'NOMAD Entry') or 'NOMAD Entry'
@@ -177,7 +188,7 @@ def normalize(archive, logger) -> Optional[bool]:
                 if eid:
                     metadata.external_id = eid
                     if nomad_url:
-                        bridge.add_nomad_link_to_elabftw(eid, nomad_url, entity_type)
+                        bridge.add_nomad_link_to_elabftw(eid, nomad_url, entity_type, entry_name=title)
                     data.config.create_elabftw_experiment = False
         if hasattr(data, 'config') and data.config:
             if getattr(data.config, 'api_key', None):
