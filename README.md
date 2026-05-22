@@ -1,61 +1,58 @@
 # econversion-NOMAD
 
-**elabFTW ↔ NOMAD Oasis integration + automated instrument data pipeline.**
+**elabFTW ↔ NOMAD Oasis integration** — bidirectional bridge, structured data sync,
+and automated instrument measurement pipeline.
 
-This repo turns elabFTW into a full instrument booking and measurement management
-system. Scientists book instruments and fill parameters in elabFTW → TRIOS exports
-data automatically → NOMAD parses curves and pushes results back into elabFTW.
-
-All running on a vanilla NOMAD Oasis — **no custom Docker build**, no forked images.
+Uses the **official NOMAD image** — no custom Docker build, updates via `docker compose pull`.
 
 ---
 
-## What You Can Do
+## What This Repo Does
 
-### 🔬 As a Scientist
+### Core: elabFTW ↔ NOMAD Bridge
 
-| You want to... | How it works |
-|---|---|
-| **Book instrument time** | Open elabFTW → Database → Devices&Tools → pick TGA/DMA/FTIR/MS → book a slot |
-| **Submit a measurement request** | Create experiment from template (e.g. "TGA Measurement"), fill all parameters (sample mass, temperature range, gas, etc.) |
-| **Track your sample** | Set status to "Running" → operator sees your pre-filled request in the queue |
-| **Get results automatically** | After measurement, your elabFTW experiment gets a results table + NOMAD link — no manual data wrangling |
+Two-way linking between elabFTW experiments and NOMAD entries:
 
-**Time investment**: ~20 minutes per measurement request. No paper forms, no emails, no USB sticks.
+| Direction | How |
+|-----------|-----|
+| **elabFTW → NOMAD** | Create a `ElabftwLinkedEntry` in NOMAD, set your API key → auto-fetches experiment data, stores NOMAD URL back in elabFTW |
+| **NOMAD → elabFTW** | Create an experiment in elabFTW → the NOMAD normalizer detects it and creates a linked NOMAD entry with structured metadata |
 
-### 🔧 As an Operator
+Works for both experiments and database items (resources). API key is stored in a
+private `ElabftwSettings` entry — only you can see it.
 
-| You want to... | How it works |
-|---|---|
-| **See what's queued** | Open elabFTW → filter experiments by status "Running" — all parameters are pre-filled |
-| **Load and run** | Physical sample goes in the autosampler → start TRIOS measurement |
-| **Never export manually** | TRIOS auto-exports CSV/TXT to a network folder — the pipeline picks it up |
-| **Results are delivered** | No need to chase users — results appear in their experiment automatically |
+### Feature: Instrument Measurement Automation
 
-**Time investment**: ~8 minutes per run for setup. The rest is automatic.
+Built on top of the bridge — turns elabFTW into a full instrument management system
+for TGA, DMA, FTIR, and MS measurements:
 
-### 🤖 What Runs Automatically
+```
+User books instrument  →  creates experiment from template  →  
+TRIOS auto-exports CSV  →  NOMAD parses curves  →  
+results pushed back to elabFTW experiment
+```
 
-| Step | What happens |
-|---|---|
-| 1. TRIOS auto-export | After measurement, CSV/TXT lands in watch folder |
-| 2. File detection | `instrument_ingest.py watch` detects new files |
-| 3. Parsing | Metadata + signal curves extracted (70+ fields, 6000+ data points) |
-| 4. Computation | TGA: Tg, residue, onset, mass loss steps / DMA: Tg from tan delta |
-| 5. elabFTW push-back | Experiment body updated with results table, status set to "Success" |
-
-**What's coming next**: NOMAD entry creation with DOI-ready structured data + interactive plots.
+[Full user guide →](docs/instrument-automation/USER_GUIDE.md)
 
 ---
 
 ## Quick Start
 
-### For Users
+### For Users (instrument booking + results)
 
-No installation needed — just use elabFTW at [elntest.ub.tum.de](https://elntest.ub.tum.de).
-Full walkthrough: [`docs/instrument-automation/USER_GUIDE.md`](docs/instrument-automation/USER_GUIDE.md)
+Just use elabFTW at [elntest.ub.tum.de](https://elntest.ub.tum.de).
+Detailed walkthrough: [`docs/instrument-automation/USER_GUIDE.md`](docs/instrument-automation/USER_GUIDE.md)
 
-### For Deployers
+### For the elabFTW Bridge
+
+1. Log into NOMAD at [researchmcp.duckdns.org/nomad-oasis/gui/](https://researchmcp.duckdns.org/nomad-oasis/gui/)
+2. **CREATE FROM SCHEMA → "elabFTW Settings"** — set your API key once
+3. **CREATE FROM SCHEMA → "elabFTW Linked Entry"** — link any experiment or item
+
+Your key stays private (only you can see your Settings entry). The normalizer
+auto-links bidirectionally on save.
+
+### For Deployers (new NOMAD Oasis)
 
 ```bash
 git clone https://github.com/harrytyp/econversion-nomad.git
@@ -63,79 +60,96 @@ cd econversion-nomad
 bash setup.sh
 ```
 
-This clones the distro template, installs the elabFTW bridge plugin, and patches configs.
-The `startup.sh` inside the container auto-installs all schema plugins at boot.
+Clones the distro template, patches configs, installs plugins. No manual steps.
 
 ---
 
 ## What's in the Repo
 
-### 📦 Plugins (auto-installed into NOMAD at boot)
+### Plugins (auto-installed into NOMAD at container boot)
 
 | Plugin | What it adds to NOMAD |
 |--------|----------------------|
-| [`plugins/three_way_sync/`](plugins/three_way_sync/) | **elabFTW ↔ NOMAD bridge** — bidirectional linking, auto-sync, webhook support |
-| [`plugins/instrument_data/`](plugins/instrument_data/) | **Instrument measurement schemas** — `TgaMeasurement`, `DmaMeasurement`, `FtrMeasurement`, `MsMeasurement` entry types in CREATE FROM SCHEMA |
+| [`plugins/three_way_sync/`](plugins/three_way_sync/) | **elabFTW Bridge** — `ElabftwLinkedEntry`, `ElabftwSettings` schemas + bidirectional normalizer + webhook support |
+| [`plugins/instrument_data/`](plugins/instrument_data/) | **Instrument measurement schemas** — `TgaMeasurement`, `DmaMeasurement`, `FtrMeasurement`, `MsMeasurement` entry types for structured instrument data |
 
-### 📜 Scripts
+Both are installed via [`plugins/startup.sh`](plugins/startup.sh) which runs at
+every NOMAD container boot. No changes to the official NOMAD image needed.
+
+### Scripts
 
 | Script | What it does |
 |--------|-------------|
 | [`setup.sh`](setup.sh) | One-click installer for a fresh NOMAD Oasis server |
-| [`scripts/instrument_ingest.py`](scripts/instrument_ingest.py) | **Watch folder + parse + push-back** — the core automation pipeline. Run it once (`process`) or continuously (`watch`). |
-| [`scripts/patch-nomad-distro.py`](scripts/patch-nomad-distro.py) | Patches the NOMAD distro docker-compose for the bridge |
+| [`scripts/instrument_ingest.py`](scripts/instrument_ingest.py) | **TRIOS export pipeline** — watches a folder for CSV/TXT files, parses metadata + curves, computes results, pushes back to elabFTW |
+| [`scripts/patch-nomad-distro.py`](scripts/patch-nomad-distro.py) | Patches docker-compose for bridge plugin paths |
 
-### 📖 Documentation
+### Documentation
 
-| Document | Who it's for |
-|----------|-------------|
-| [`docs/instrument-automation/USER_GUIDE.md`](docs/instrument-automation/USER_GUIDE.md) | **Scientists + Operators** — step-by-step with automation status badges |
-| [`docs/instrument-automation/01-workflow-overview.md`](docs/instrument-automation/01-workflow-overview.md) | Complete A-to-Z system flow |
-| [`docs/instrument-automation/02-infrastructure.md`](docs/instrument-automation/02-infrastructure.md) | Server architecture, Docker, Caddy, MCP services |
-| [`docs/instrument-automation/03-elabftw-templates.md`](docs/instrument-automation/03-elabftw-templates.md) | All 4 instrument items + 4 experiment templates with exact field listings |
-| [`docs/instrument-automation/05-data-pipeline.md`](docs/instrument-automation/05-data-pipeline.md) | Parser architecture, NOMAD schemas, CSV/TXT format |
-| [`docs/elabftw-integration/`](docs/elabftw-integration/) | Bridge plugin user guide (Markdown + HTML) |
+| Document | Covers |
+|----------|--------|
+| [`docs/elabftw-integration/03-user-guide.md`](docs/elabftw-integration/03-user-guide.md) | elabFTW Bridge — user-facing setup guide (HTML version deployed to NOMAD) |
+| [`docs/elabftw-integration/01-installation-guide.md`](docs/elabftw-integration/01-installation-guide.md) | Bridge plugin installation |
+| [`docs/elabftw-integration/02-elabftw-connection-guide.md`](docs/elabftw-integration/02-elabftw-connection-guide.md) | elabFTW API connection setup |
+| [`docs/elabftw-integration/04-three-way-sync.md`](docs/elabftw-integration/04-three-way-sync.md) | DataTagger integration |
+| [`docs/instrument-automation/USER_GUIDE.md`](docs/instrument-automation/USER_GUIDE.md) | **Instrument automation** — step-by-step for scientists & operators |
+| [`docs/instrument-automation/`](docs/instrument-automation/) | Full A-to-Z flow, infrastructure, templates, data pipeline |
 
 ---
 
-## Architecture (the 30-second version)
+## Architecture Overview
 
 ```
 elabFTW (elntest.ub.tum.de)
   │
-  ├── 4 bookable instrument items (TGA, DMA, FTIR, MS)  ← Book here
-  ├── 4 experiment templates with 9-12 structured fields ← Fill params here
+  ├── experiments + items (resources)
   │
-  ▼ TRIOS auto-exports CSV/TXT
+  ├── elabFTW Bridge (three_way_sync plugin)
+  │   ├── bidirectional linking via normalizer
+  │   ├── per-user API keys (ElabftwSettings)
+  │   └── auto-sync on save
   │
-instrument_ingest.py  ← Detects, parses, computes
+  ├── Instrument Automation (instrument_data plugin + ingest script)
+  │   ├── 4 bookable instrument items (TGA, DMA, FTIR, MS)
+  │   ├── 4 experiment templates with structured extra_fields
+  │   ├── TRIOS auto-export → watch folder → parser → compute
+  │   └── results pushed back to experiment body + metadata
   │
-  ├── PATCH → elabFTW experiment (results table + status = Success)
-  └── POST → NOMAD entry      (structured data, DOI-ready) [planned]
+  └── NOMAD Oasis (researchmcp.duckdns.org)
+      ├── EntryData schemas for structured instrument data
+      └── DOI-ready archiving
 ```
-
-## Key Design Decisions
-
-- **Official NOMAD image only** — no custom fork, updates via `docker compose pull`
-- **Per-request credential injection** (elabMCP) — no shared API keys, no persistent storage
-- **All automation in Python** — no new services, runs in existing containers or as a simple cron
-- **Structured metadata from the start** — extra_fields not free-text, so NOMAD can read them programmatically
 
 ## Instrument Templates
 
-| Template | ID | Fields | Select options |
-|----------|----|--------|---------------|
-| TGA Measurement | 175 | 12 | crucible_type, gas_atmosphere |
-| DMA Measurement | 176 | 12 | clamp_type |
-| FTIR Measurement | 177 | 9 | sample_state |
-| MS Measurement | 178 | 9 | ionization_method |
+| Template | ID | Fields | Purpose |
+|----------|----|--------|---------|
+| TGA Measurement | 175 | 12 | Thermogravimetric analysis |
+| DMA Measurement | 176 | 12 | Dynamic mechanical analysis |
+| FTIR Measurement | 177 | 9 | Fourier-transform infrared spectroscopy |
+| MS Measurement | 178 | 9 | Mass spectrometry |
 
-Each template includes a body with workflow instructions and a pre-formatted HTML results table.
+Each template uses elabFTW's `extra_fields` system — structured metadata, not
+free-text, so NOMAD can read them programmatically.
+
+## Automation Status
+
+| Step | Status |
+|------|--------|
+| elabFTW ↔ NOMAD bridge | ✅ Live |
+| Instrument items + booking | ✅ Live (4 items, bookable) |
+| Experiment templates | ✅ Live (4 templates with extra_fields) |
+| CSV/TXT parser | ✅ Live (TGA + DMA tested on real data) |
+| Results computation | ✅ Live (Tg, residue, DTG peaks, mass loss steps) |
+| elabFTW push-back | ✅ Live (body + metadata + status) |
+| NOMAD entry creation | 🔴 Planned |
+| Summary plot generation | 🔴 Planned |
+| .TRPC method auto-generation | 🔴 Planned |
 
 ## Links
 
 - [elabFTW instance](https://elntest.ub.tum.de)
 - [NOMAD Oasis](https://researchmcp.duckdns.org/nomad-oasis/gui/)
 - [elab-app Logger](https://elab-app.researchmcp.duckdns.org)
-- [Landing Page](https://researchmcp.duckdns.org)
+- [Landing Page (MCP registration)](https://researchmcp.duckdns.org)
 - [FAIRmat elabFTW plugin](https://github.com/FAIRmat-NFDI/nomad-external-eln-integrations)
