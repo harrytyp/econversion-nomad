@@ -81,19 +81,17 @@ tr:nth-child(even) { background: #f9f9f9; }
 <ul>
 <li>Reads your API key from your <strong>"elabFTW Settings"</strong> entry</li>
 <li>Fetches the experiment/item title from elabFTW</li>
-<li>Writes a <code>NOMAD URL</code> into the elabFTW experiment's metadata (extra fields section)</li>
+<li>Writes a <code>nomad_url</code> into the elabFTW experiment's metadata (not extra_fields — works with any category)</li>
 <li>Clears any API key from the entry data (your key stays in your Settings entry)</li>
 </ul>
 
-<h2>Verify the Link</h2>
+|<h2>Verify the Link</h2>
 <p>In elabFTW, open the linked experiment. Go to the <strong>Metadata</strong> section — you should see:</p>
 <pre>{
-  "extra_fields": {
-    "NOMAD URL": "https://researchmcp.duckdns.org/...",
-    "NOMAD Synced": "2026-05-22T..."
-  }
+  "nomad_url": "https://researchmcp.duckdns.org/...",
+  "nomad_synced": "2026-05-22T..."
 }</pre>
-<p>Click the NOMAD URL to jump directly to your uploaded data in NOMAD.</p>
+<p>Click the nomad_url to jump directly to your uploaded data in NOMAD.</p>
 
 <h2>Automated Uploads (API)</h2>
 <p>For scripts and machines uploading data automatically:</p>

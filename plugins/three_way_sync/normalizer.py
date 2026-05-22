@@ -121,9 +121,11 @@ class ElabftwBridge:
 
     def add_nomad_link_to_elabftw(self, entity_id: str, nomad_url: str, entity_type: str = None) -> bool:
         etype = entity_type or self._entity_type()
-        extra = {"NOMAD URL": nomad_url, "NOMAD Synced": datetime.now(timezone.utc).isoformat()}
         import json as _json
-        payload = {"metadata": _json.dumps({"extra_fields": extra})}
+        payload = {"metadata": _json.dumps({
+            "nomad_url": nomad_url,
+            "nomad_synced": datetime.now(timezone.utc).isoformat()
+        })}
         try:
             resp = requests.patch(
                 self._endpoint(etype, entity_id),
