@@ -49,6 +49,7 @@ ingestion, parsing, archiving).
 
 | Document | What it covers |
 |----------|---------------|
+| [USER_GUIDE.md](USER_GUIDE.md) | **Step-by-step for users & operators** — left column = user, right column = operator |
 | [01-workflow-overview.md](01-workflow-overview.md) | Complete A-to-Z user & system flow |
 | [02-infrastructure.md](02-infrastructure.md) | Server, Docker, Caddy, MCP services |
 | [03-elabftw-templates.md](03-elabftw-templates.md) | Resource items, experiment templates, booking |
