@@ -1,58 +1,46 @@
 #!/usr/bin/env python3
-"""Patch nomad-distro-template files for elabFTW integration."""
-import os, sys, re, yaml
+"""Patch nomad-distro-template for elabFTW bridge (no custom image needed)."""
+
+import os, sys, yaml
 
 DISTRO = sys.argv[1] if len(sys.argv) > 1 else os.environ.get("NOMAD_DISTRO_DIR", os.path.expanduser("~/nomad-distro-template"))
-IMAGE = sys.argv[2] if len(sys.argv) > 2 else os.environ.get("NOMAD_IMAGE", "nomad-distro-template:with-elabftw")
-
 changes = []
 
-# 1. Patch pyproject.toml
-pp_path = os.path.join(DISTRO, "pyproject.toml")
-with open(pp_path) as f:
-    content = f.read()
-
-if "nomad-external-eln-integrations" not in content:
-    old = 'plugins = [
- "nomad-north-jupyter>=0.2.5"
-]'
-    new = 'plugins = [
- "nomad-north-jupyter>=0.2.5",
- "nomad-external-eln-integrations @ git+https://github.com/FAIRmat-NFDI/nomad-external-eln-integrations.git",
-]'
-    if old in content:
-        content = content.replace(old, new)
-        with open(pp_path, "w") as f:
-            f.write(content)
-        changes.append("pyproject.toml: added elabFTW plugin")
-    else:
-        changes.append("pyproject.toml: SKIP - pattern not found")
-
-# 2. Patch docker-compose.yaml
+# 1. Patch docker-compose.yaml — use official image + startup command
 dc_path = os.path.join(DISTRO, "docker-compose.yaml")
 with open(dc_path) as f:
     data = yaml.safe_load(f)
 
-for svc in ["app", "north", "worker"]:
-    s = data["services"].get(svc)
-    if s and s.get("image") != IMAGE:
-        s["image"] = IMAGE
-        changes.append(f"{svc}: image -> {IMAGE}")
+for svc_name in ["app"]:
+    s = data["services"].get(svc_name)
+    if not s:
+        continue
 
-app = data["services"].get("app", {})
-vol_path = "./plugins:/app/plugins"
-if vol_path not in app.get("volumes", []):
-    app.setdefault("volumes", []).append(vol_path)
-    changes.append("app: added plugins volume")
+    # Ensure we use the OFFICIAL image (not a custom build)
+    official = "ghcr.io/fairmat-nfdi/nomad-distro-template:main"
+    if s.get("image") != official:
+        s["image"] = official
+        changes.append(f"{svc_name}: image -> {official}")
 
-env = app.setdefault("environment", {})
-if env.get("PYTHONPATH") != "/app/plugins":
-    env["PYTHONPATH"] = "/app/plugins"
-    changes.append("app: added PYTHONPATH")
+    # Add volume mount for plugins (only if not already present)
+    vol_plugins = "./plugins:/app/plugins"
+    if vol_plugins not in s.get("volumes", []):
+        s.setdefault("volumes", []).append(vol_plugins)
+        changes.append(f"{svc_name}: added plugins volume")
+
+    # Override command to run startup.sh first
+    s["command"] = "bash /app/plugins/startup.sh"
+    changes.append(f"{svc_name}: command -> startup.sh")
+
+    # Add PYTHONPATH
+    env = s.setdefault("environment", {})
+    if isinstance(env, dict):
+        env["PYTHONPATH"] = "/app/plugins"
+        changes.append(f"{svc_name}: PYTHONPATH=/app/plugins")
 
 with open(dc_path, "w") as f:
     yaml.dump(data, f, default_flow_style=False, width=200, sort_keys=False)
-changes.append("docker-compose.yaml saved")
+changes.append("saved docker-compose.yaml")
 
 for c in changes:
     print(f"  {c}")
