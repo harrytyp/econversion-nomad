@@ -60,8 +60,8 @@ ingestion, parsing, archiving).
 
 | Service | URL |
 |---------|-----|
-| elabFTW | https://elntest.ub.tum.de |
-| NOMAD Oasis | https://researchmcp.duckdns.org/nomad-oasis/gui/ |
-| elab-app Logger | https://elab-app.researchmcp.duckdns.org |
-| Landing Page | https://researchmcp.duckdns.org |
-| GitHub Repo | https://github.com/harrytyp/econversion-nomad |
+| elabFTW | [elntest.ub.tum.de](https://elntest.ub.tum.de) |
+| NOMAD Oasis | [researchmcp.duckdns.org/nomad-oasis/gui/](https://researchmcp.duckdns.org/nomad-oasis/gui/) |
+| elab-app Logger | [elab-app.researchmcp.duckdns.org](https://elab-app.researchmcp.duckdns.org) |
+| Landing Page | [researchmcp.duckdns.org](https://researchmcp.duckdns.org) |
+| GitHub Repo | [github.com/harrytyp/econversion-nomad](https://github.com/harrytyp/econversion-nomad) |

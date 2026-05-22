@@ -325,13 +325,13 @@ AUTOMATIC PIPELINE
 
 | Action | Link |
 |--------|------|
-| elabFTW login | https://elntest.ub.tum.de |
-| TGA Instrument (book) | https://elntest.ub.tum.de/database.php?mode=view&id=1367 |
-| DMA Instrument (book) | https://elntest.ub.tum.de/database.php?mode=view&id=1368 |
-| FTIR Instrument (book) | https://elntest.ub.tum.de/database.php?mode=view&id=1369 |
-| MS Instrument (book) | https://elntest.ub.tum.de/database.php?mode=view&id=1370 |
-| NOMAD Oasis | https://researchmcp.duckdns.org/nomad-oasis/gui/ |
-| elab-app Logger | https://elab-app.researchmcp.duckdns.org |
+| elabFTW login | [elntest.ub.tum.de](https://elntest.ub.tum.de) |
+| TGA Instrument (book) | [database.php?mode=view&id=1367](https://elntest.ub.tum.de/database.php?mode=view&id=1367) |
+| DMA Instrument (book) | [database.php?mode=view&id=1368](https://elntest.ub.tum.de/database.php?mode=view&id=1368) |
+| FTIR Instrument (book) | [database.php?mode=view&id=1369](https://elntest.ub.tum.de/database.php?mode=view&id=1369) |
+| MS Instrument (book) | [database.php?mode=view&id=1370](https://elntest.ub.tum.de/database.php?mode=view&id=1370) |
+| NOMAD Oasis | [researchmcp.duckdns.org/nomad-oasis/gui/](https://researchmcp.duckdns.org/nomad-oasis/gui/) |
+| elab-app Logger | [elab-app.researchmcp.duckdns.org](https://elab-app.researchmcp.duckdns.org) |
 
 ## Templates Available
 

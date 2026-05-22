@@ -47,8 +47,8 @@ The normalizer auto-links bidirectionally: NOMAD URL → elabFTW extra fields.
 
 ## User Guide
 
-- **HTML** (on your NOMAD instance): `https://researchmcp.duckdns.org/nomad-oasis/docs/elabftw/user-guide.html`
-- **Markdown** (in this repo): `docs/elabftw-integration/03-user-guide.md`
+- **HTML** (on your NOMAD instance): [researchmcp.duckdns.org/nomad-oasis/docs/elabftw/user-guide.html](https://researchmcp.duckdns.org/nomad-oasis/docs/elabftw/user-guide.html)
+- **Markdown** (in this repo): [`docs/elabftw-integration/03-user-guide.md`](docs/elabftw-integration/03-user-guide.md)
 
 ## Architecture
 
@@ -81,7 +81,7 @@ docker compose up -d             # restart with startup.sh
 
 ## Links
 
-- User guide (live): `https://researchmcp.duckdns.org/nomad-oasis/docs/elabftw/user-guide.html`
-- NOMAD Oasis: `https://researchmcp.duckdns.org/nomad-oasis/gui/`
-- elabFTW instance: `https://elntest.ub.tum.de/`
+- User guide (live): [researchmcp.duckdns.org/nomad-oasis/docs/elabftw/user-guide.html](https://researchmcp.duckdns.org/nomad-oasis/docs/elabftw/user-guide.html)
+- NOMAD Oasis: [researchmcp.duckdns.org/nomad-oasis/gui/](https://researchmcp.duckdns.org/nomad-oasis/gui/)
+- elabFTW instance: [elntest.ub.tum.de](https://elntest.ub.tum.de/)
 - FAIRmat plugin: [nomad-external-eln-integrations](https://github.com/FAIRmat-NFDI/nomad-external-eln-integrations)
