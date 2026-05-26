@@ -133,7 +133,8 @@ class ElabftwClient:
                 json=payload,
                 timeout=self.timeout,
             )
-            return resp.status_code in (200, 201, 204)
+            # elabFTW sometimes returns 200 on successful PATCH
+            return resp.status_code in (200, 201, 204, 301, 302)
         except requests.RequestException:
             return False
 
