@@ -15,6 +15,8 @@ m_package = SchemaPackage(
         "instrument_data.schema:DmaMeasurement",
         "instrument_data.schema:FtrMeasurement",
         "instrument_data.schema:MsMeasurement",
+        "instrument_data.schema:MockInstrumentRun",
+        "instrument_data.schema:IngestionPipelineConfig",
     ]
 )
 
@@ -335,6 +337,203 @@ class MsMeasurement(EntryData):
     results = SubSection(sub_section=MsResults)
     elabftw_ref = SubSection(sub_section=ElabftwRef)
     summary_plot = Quantity(type=str)
+
+
+# ── Mock Instrument Run (for demo / testing) ────────────────────────────────
+
+class MockRunConfig(MSection):
+    """Configuration for a mock instrument run."""
+    sample_name = Quantity(
+        type=str, default="Polymer-X",
+        description="Sample identifier",
+        a_eln=ELNAnnotation(component="StringEditQuantity"),
+    )
+    sample_mass_mg = Quantity(
+        type=float, default=12.5, unit="mg",
+        description="Sample mass",
+        a_eln=ELNAnnotation(component="NumberEditQuantity"),
+    )
+    crucible_type = Quantity(
+        type=str, default="Alumina",
+        description="Alumina | Platinum | Aluminum",
+        a_eln=ELNAnnotation(component="StringEditQuantity"),
+    )
+    temperature_start = Quantity(
+        type=float, default=30.0, unit="°C",
+        description="Starting temperature",
+        a_eln=ELNAnnotation(component="NumberEditQuantity"),
+    )
+    temperature_end = Quantity(
+        type=float, default=1000.0, unit="°C",
+        description="End temperature",
+        a_eln=ELNAnnotation(component="NumberEditQuantity"),
+    )
+    heating_rate = Quantity(
+        type=float, default=10.0, unit="K/min",
+        description="Heating rate",
+        a_eln=ELNAnnotation(component="NumberEditQuantity"),
+    )
+    gas_atmosphere = Quantity(
+        type=str, default="N2",
+        description="N2 | Air | Ar | Synthetic Air | O2",
+        a_eln=ELNAnnotation(component="StringEditQuantity"),
+    )
+    gas_flow_rate = Quantity(
+        type=float, default=50.0, unit="mL/min",
+        description="Purge gas flow rate",
+        a_eln=ELNAnnotation(component="NumberEditQuantity"),
+    )
+    operator = Quantity(
+        type=str, default="Demo",
+        description="Operator name",
+        a_eln=ELNAnnotation(component="StringEditQuantity"),
+    )
+
+
+class MockRunResults(MSection):
+    """Results from a mock instrument run."""
+    run_status = Quantity(
+        type=str,
+        description="pending | running | completed | error",
+    )
+    run_message = Quantity(
+        type=str,
+        description="Status message or error details",
+    )
+    generated_file = Quantity(
+        type=str,
+        description="Path to the generated CSV/TXT file",
+    )
+    signal_points = Quantity(
+        type=int,
+        description="Number of data points generated",
+    )
+    channels = Quantity(
+        type=str,
+        description="Comma-separated list of signal channels",
+    )
+    computed_tg = Quantity(
+        type=float, unit="°C",
+        description="Tg from analysis",
+    )
+    computed_residue = Quantity(
+        type=float, unit="%",
+        description="Residue mass percentage",
+    )
+    computed_onset = Quantity(
+        type=float, unit="°C",
+        description="Onset temperature",
+    )
+    computed_steps = Quantity(
+        type=JSON,
+        description="Mass loss steps detected",
+    )
+    elabftw_experiment_id = Quantity(
+        type=str,
+        description="elabFTW experiment ID that was updated",
+    )
+
+
+class MockInstrumentRun(EntryData):
+    """Mock instrument run for demo and testing.
+
+    Fill in the parameters below, then set Run to True and save.
+    The normalizer generates realistic TGA signal data, parses it,
+    computes results, and populates this entry. No instrument needed.
+    """
+    m_def = Section(
+        label="Mock Instrument Run",
+        categories=[ElnIntegrationCategory],
+        a_eln=ELNAnnotation(overview=True),
+    )
+    title = Quantity(
+        type=str,
+        description="Name for this mock run",
+        a_eln=ELNAnnotation(component="StringEditQuantity", overview=True),
+    )
+    config = SubSection(
+        sub_section=MockRunConfig,
+        description="Measurement parameters",
+    )
+    run_now = Quantity(
+        type=bool, default=False,
+        description="Set to True and save to trigger a mock instrument run",
+        a_eln=ELNAnnotation(component="BoolEditQuantity"),
+    )
+    results = SubSection(
+        sub_section=MockRunResults,
+        description="Results from the mock run",
+    )
+
+    def normalize(self, archive, logger):
+        super().normalize(archive, logger)
+        if not self.run_now:
+            return
+        if not self.config:
+            logger.info("Mock run: no config set, skipping")
+            return
+
+        # Import here to avoid circular imports
+        from instrument_data.mock_normalizer import run_mock_instrument
+        run_mock_instrument(self, archive, logger)
+
+
+# ── Ingestion Pipeline Config (run as service, configure from GUI) ──────────
+
+class PipelineConfigEntry(EntryData):
+    """Configure the instrument data ingestion pipeline.
+
+    The ingestion pipeline runs as a background service on the server,
+    watching a folder for new instrument exports. This entry lets you
+    view its status and trigger manual processing.
+    """
+    m_def = Section(
+        label="Ingestion Pipeline",
+        categories=[ElnIntegrationCategory],
+        a_eln=ELNAnnotation(overview=True),
+    )
+    title = Quantity(
+        type=str, default="Instrument Ingestion Pipeline",
+        description="Pipeline configuration name",
+        a_eln=ELNAnnotation(component="StringEditQuantity", overview=True),
+    )
+    watch_directory = Quantity(
+        type=str, default="/home/debian/instrument-exports/",
+        description="Directory the pipeline watches for new CSV/TXT files",
+        a_eln=ELNAnnotation(component="StringEditQuantity"),
+    )
+    pipeline_status = Quantity(
+        type=str, default="unknown",
+        description="running | stopped | error",
+    )
+    last_checked = Quantity(
+        type=str,
+        description="Last time the watch directory was scanned",
+    )
+    last_file_processed = Quantity(
+        type=str,
+        description="Name of the most recently processed file",
+    )
+    files_processed_total = Quantity(
+        type=int, default=0,
+        description="Total files processed since startup",
+    )
+    errors_total = Quantity(
+        type=int, default=0,
+        description="Total processing errors",
+    )
+    trigger_scan = Quantity(
+        type=bool, default=False,
+        description="Set to True and save to trigger an immediate scan",
+        a_eln=ELNAnnotation(component="BoolEditQuantity"),
+    )
+
+    def normalize(self, archive, logger):
+        super().normalize(archive, logger)
+        if self.trigger_scan:
+            logger.info("Pipeline: manual scan triggered")
+            self.trigger_scan = False
+            # Scan will be handled by the background service
 
 
 m_package.init_metainfo()

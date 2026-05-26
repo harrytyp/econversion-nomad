@@ -186,7 +186,43 @@ class ElabftwClient:
             pass
         return {}
 
-    # ─── Result push-back ────────────────────────────────────────────────────
+    # ── Create experiment ──────────────────────────────────────────────────
+
+    def create_experiment(
+        self,
+        title: str,
+        body: str = "",
+        tags: Optional[List[str]] = None,
+        category_id: Optional[int] = None,
+        status_id: Optional[int] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """Create a new experiment in elabFTW."""
+        payload: Dict[str, Any] = {
+            "title": title,
+            "team": self.team,
+        }
+        if body:
+            payload["body"] = body
+        if tags:
+            payload["tags"] = tags
+        if category_id:
+            payload["category"] = category_id
+        if status_id:
+            payload["status"] = status_id
+
+        try:
+            resp = self.session.post(
+                f"{self.api_url}/experiments",
+                json=payload,
+                timeout=self.timeout,
+            )
+            if resp.status_code == 200:
+                return resp.json()
+            return None
+        except requests.RequestException:
+            return None
+
+    # ── Result push-back ────────────────────────────────────────────────────
 
     def push_tga_results(
         self,
