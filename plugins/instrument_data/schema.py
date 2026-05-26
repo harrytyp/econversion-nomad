@@ -16,7 +16,7 @@ m_package = SchemaPackage(
         "instrument_data.schema:FtrMeasurement",
         "instrument_data.schema:MsMeasurement",
         "instrument_data.schema:MockInstrumentRun",
-        "instrument_data.schema:IngestionPipelineConfig",
+        "instrument_data.schema:PipelineConfigEntry",
     ]
 )
 

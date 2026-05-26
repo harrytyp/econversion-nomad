@@ -4,9 +4,6 @@ Standalone imports (no NOMAD dependencies needed):
     from instrument_data.parser import parse_file, detect_format
     from instrument_data.elabftw_client import ElabftwClient
     from instrument_data.mock_run import generate_and_write
-
-NOMAD context imports:
-    from instrument_data.schema import TgaMeasurement, DmaMeasurement, ...
 """
 from instrument_data.parser import parse_file, detect_format
 from instrument_data.elabftw_client import ElabftwClient
