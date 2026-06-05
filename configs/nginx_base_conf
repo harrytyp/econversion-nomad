@@ -1,4 +1,5 @@
 # Shared nginx config for both HTTP and HTTPS
+resolver 127.0.0.11 valid=10s;
 
 gzip_min_length     1000;
 gzip_buffers        4 8k;

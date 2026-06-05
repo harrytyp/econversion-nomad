@@ -133,6 +133,8 @@ services:
       NOMAD_MONGO_HOST: mongo
       NOMAD_LOGSTASH_HOST: logtransfer
       NOMAD_TEMPORAL_HOST: temporal
+      NOMAD_CONFIG: /app/nomad.yaml
+      PYTHONPATH: /app/plugins
     env_file:
       - ./.env
     depends_on:
@@ -145,6 +147,7 @@ services:
     volumes:
       # - ./configs/nomad.yaml:/app/nomad.yaml
       - ./.volumes/fs:/app/.volumes/fs
+      - ./plugins:/app/plugins
     command: python -m nomad.cli admin run action-internal-worker
     healthcheck:
       # See https://keithtenzer.com/temporal/Deploying_Temporal_Worker_on_Kubernetes/#liveliness-and-readiness-probes
@@ -247,6 +250,8 @@ services:
       NOMAD_LOGSTASH_HOST: logtransfer
       NOMAD_NORTH_HUB_HOST: north
       NOMAD_TEMPORAL_HOST: temporal
+      NOMAD_CONFIG: /app/nomad.yaml
+      PYTHONPATH: /app/plugins
     env_file:
       - ./.env
     depends_on:
@@ -261,7 +266,8 @@ services:
     volumes:
       # - ./configs/nomad.yaml:/app/nomad.yaml
       - ./.volumes/fs:/app/.volumes/fs
-    command: python -m nomad.cli admin run app --with-gui --gunicorn --host 0.0.0.0
+      - ./plugins:/app/plugins
+    command: bash /app/plugins/startup.sh admin run app --with-gui --gunicorn --host 0.0.0.0
     healthcheck:
       test:
         - "CMD"
@@ -295,6 +301,7 @@ services:
     volumes:
       # - ./configs/nomad.yaml:/app/nomad.yaml
       - ./.volumes/fs:/app/.volumes/fs
+      - ./plugins:/app/plugins
       - /var/run/docker.sock:/var/run/docker.sock
     user: "1000:991"
     command: python -m nomad.cli admin run hub
@@ -331,6 +338,7 @@ services:
     volumes:
       # - ./configs/nomad.yaml:/app/nomad.yaml
       - ./.volumes/fs:/app/.volumes/fs
+      - ./plugins:/app/plugins
     command: python -m nomad.cli admin run logtransfer
     profiles: ["with_logtransfer"]
 
