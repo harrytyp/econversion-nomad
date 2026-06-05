@@ -43,7 +43,7 @@ class TgaParser(MatchingParser):
             code_name='TGA Parser',
             domain=None,
             mainfile_mime_re='text/.*',
-            mainfile_name_re=r'.*\.(txt|csv|dat)$',
+            mainfile_name_re=r'.*\.(txt|csv|dat|xlsx|xls)$',
             level=0,
         )
 
