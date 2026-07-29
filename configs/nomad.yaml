@@ -14,7 +14,7 @@ plugins:
     options:
       nomad_north_jupyter.north_tools:jupyter:
         north_tool:
-          image: ghcr.io/fairmat-nfdi/nomad-north-jupyter:latest
+          image: ghcr.io/harrytyp/econversion-nomad/jupyter:main
       instrument_data.entrypoint:instrument_schema:
         plugin_type: schema
         plugin_type: parser
