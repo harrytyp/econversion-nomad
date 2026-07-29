@@ -13,8 +13,6 @@ import io
 import json
 import logging
 import re
-import os
-import glob
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -248,9 +246,6 @@ def push_tga_to_elabftw(
     elabftw_api_key: str = "",
     elabftw_team: int = DEFAULT_ELABFTW_TEAM,
     upload_id: str = "",
-    csv_filepath: str = "",
-    norm: Optional[Dict[str, Any]] = None,
-    entry_id: str = "",
 ) -> Tuple[bool, str]:
     """Push TGA results to an elabFTW item.
 
@@ -317,10 +312,6 @@ def push_tga_to_elabftw(
             computed=computed,
             nomad_url=nomad_url,
             plot_url=plot_url,
-            csv_filepath=csv_filepath,
-            norm=norm,
-            entry_id=entry_id,
-            upload_id=upload_id,
         )
     except Exception:
         ok = False
@@ -339,9 +330,6 @@ def process_tga_file(
     elab_item_id: Optional[int] = None,
     sample_name: str = "Unknown",
     upload_id: str = "",
-    csv_filepath: str = "",
-    norm: Optional[Dict[str, Any]] = None,
-    entry_id: str = "",
     nomad_url: str = "",
     elabftw_api_key: str = "",
     elabftw_team: int = DEFAULT_ELABFTW_TEAM,
@@ -396,14 +384,6 @@ def process_tga_file(
     except Exception as e:
         logger.warning(f"Plot generation failed: {e}")
 
-    # Look up NOMAD entry ID from archive files
-    entry_id = ""
-    if upload_id:
-        archive_dir = f"/app/.volumes/fs/staging/{upload_id[:2]}/{upload_id}/archive"
-        msg_files = glob.glob(os.path.join(archive_dir, "*.msg"))
-        if msg_files:
-            entry_id = os.path.basename(msg_files[0]).split("-")[0]
-
     # 5. Push to elabFTW
     if elab_item_id and elabftw_api_key:
         success, elab_url = push_tga_to_elabftw(
@@ -416,9 +396,6 @@ def process_tga_file(
             elabftw_api_key=elabftw_api_key,
             elabftw_team=elabftw_team,
             upload_id=upload_id,
-            csv_filepath=str(path),
-            norm=norm,
-            entry_id=entry_id,
         )
         if success:
             result["status"] = "completed"

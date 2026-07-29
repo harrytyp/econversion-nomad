@@ -161,7 +161,7 @@ services:
       replicas: 4
       resources:
         limits:
-          cpus: "4.0" # Maximum 4 CPU cores
+          cpus: "2.0" # Maximum 4 CPU cores
           memory: 8G # Maximum 8GB RAM
       restart_policy:
         condition: on-failure
@@ -201,7 +201,7 @@ services:
   #   volumes:
   #     # - ./configs/nomad.yaml:/app/nomad.yaml
   #     - ./.volumes/fs:/app/.volumes/fs
-  #   command: python -m nomad.cli admin run action-gpu-worker
+  #   command: python3 /app/plugins/nomad_launcher.py admin run action-gpu-worker
 
   # # nomad cpu worker (actions)
   # cpu_worker:
@@ -233,7 +233,7 @@ services:
   #   volumes:
   #     # - ./configs/nomad.yaml:/app/nomad.yaml
   #     - ./.volumes/fs:/app/.volumes/fs
-  #   command: python -m nomad.cli admin run action-cpu-worker
+  #   command: python3 /app/plugins/nomad_launcher.py admin run action-cpu-worker
 
   # nomad app (api + proxy)
   app:
@@ -304,7 +304,7 @@ services:
       - ./plugins:/app/plugins
       - /var/run/docker.sock:/var/run/docker.sock
     user: "1000:991"
-    command: python -m nomad.cli admin run hub
+    command: python3 /app/plugins/nomad_launcher.py admin run hub
     healthcheck:
       test:
         - "CMD"
@@ -339,7 +339,7 @@ services:
       # - ./configs/nomad.yaml:/app/nomad.yaml
       - ./.volumes/fs:/app/.volumes/fs
       - ./plugins:/app/plugins
-    command: python -m nomad.cli admin run logtransfer
+    command: python3 /app/plugins/nomad_launcher.py admin run logtransfer
     profiles: ["with_logtransfer"]
 
   # nomad proxy (a reverse proxy for nomad)

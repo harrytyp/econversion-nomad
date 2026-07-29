@@ -15,7 +15,6 @@ dependencies = [
 
 [project.entry-points."nomad.plugin"]
 instrument-schema = "instrument_data.entrypoint:instrument_schema"
-tga-parser = "instrument_data.entrypoint:tga_parser_entry_point"
 
 [tool.setuptools.packages.find]
 where = ["."]

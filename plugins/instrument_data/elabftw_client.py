@@ -13,7 +13,7 @@ from __future__ import annotations
 import json
 import os
 from datetime import datetime, timezone
-from typing import Optional,  Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import requests
 
@@ -171,7 +171,6 @@ class ElabftwClient:
         metadata: Optional[Dict[str, Any]] = None,
         status_id: Optional[int] = None,
         tags: Optional[List[str]] = None,
-        extra_fields: Optional[Dict[str, Any]] = None,
     ) -> bool:
         payload: Dict[str, Any] = {}
         if body is not None:
@@ -182,8 +181,6 @@ class ElabftwClient:
             payload["status"] = status_id
         if tags is not None:
             payload["tags"] = tags
-        if extra_fields is not None:
-            payload["extra_fields"] = extra_fields
         if not payload:
             return False
         try:
@@ -295,19 +292,15 @@ class ElabftwClient:
         computed: Dict[str, Any],
         nomad_url: str,
         plot_url: str = "",
-        csv_filepath: str = "",
-        norm: Optional[Dict[str, Any]] = None,
-        entry_id: str = "",
-        upload_id: str = "",
     ) -> bool:
         """Push parsed TGA results back to a TGA item (not experiment)."""
         # Same HTML body generation as push_tga_results (reuses _build_raw_data_table)
-        tg = computed.get("summary", {}).get("tg_glass_transition", "")
-        residue = computed.get("summary", {}).get("residue_mass_pct", "")
-        onset = computed.get("summary", {}).get("onset_temperature_c", "")
-        td5 = computed.get("summary", {}).get("mass_loss_5pct", "")
-        td10 = computed.get("summary", {}).get("mass_loss_10pct", "")
-        dtg_max = computed.get("summary", {}).get("dtg_max", "")
+        tg = computed.get("tg_glass_transition", "")
+        residue = computed.get("residue_mass_pct", "")
+        onset = computed.get("onset_temperature", "")
+        td5 = computed.get("mass_loss_5pct", "")
+        td10 = computed.get("mass_loss_10pct", "")
+        dtg_max = computed.get("dtg_max", "")
         steps = computed.get("steps", [])
 
         def _card(label, value, unit, color):
@@ -357,38 +350,6 @@ class ElabftwClient:
         else:
             steps_html = ""
 
-
-        # Measurement parameters table
-        params_html = ""
-        if norm:
-            param_rows = []
-            param_map = {
-                "sample_name": ("Sample Name", ""),
-                "sample_mass": ("Sample Mass", "mg"),
-                "procedure_name": ("Procedure", ""),
-                "heating_rate": ("Heating Rate", "K/min"),
-                "temperature_end": ("Final Temperature", "°C"),
-                "crucible_type": ("Crucible", ""),
-                "gas_atmosphere": ("Atmosphere", ""),
-                "operator": ("Operator", ""),
-                "instrument_name": ("Instrument", ""),
-            }
-            for key, (label, unit) in param_map.items():
-                val = norm.get(key)
-                if val:
-                    display = f"""{val} {unit}""" if unit else str(val)
-                    param_rows.append(
-                        "<tr><td style=\"padding:4px 12px;font-weight:600;color:#555;white-space:nowrap\">" + label + "</td>"
-                        "<td style=\"padding:4px 12px\">" + display + "</td></tr>"
-                    )
-            if param_rows:
-                params_html = (
-                    "<h3 style=\"margin:16px 0 8px\">Measurement Parameters</h3>"
-                    "<table style=\"border-collapse:collapse;width:auto;font-size:13px;margin:4px 0\">"
-                    + "".join(param_rows)
-                    + "</table>"
-                )
-
         # Progress bar
         progress_html = ""
         if residue:
@@ -428,14 +389,10 @@ class ElabftwClient:
 
         # NOMAD link
         nomad_html = ""
-        # Build NOMAD entry URL
-        nomad_entry_url = nomad_url
-        if entry_id:
-            nomad_entry_url = f"https://researchmcp.duckdns.org/nomad-oasis/gui/search/entries/entry/id/{entry_id}"
-        if nomad_entry_url:
+        if nomad_url:
             nomad_html = (
                 '<h3 style="margin:16px 0 8px">NOMAD Entry</h3>'
-                f'<p><a href="{nomad_entry_url}" target="_blank" style="color:#1976D2">{nomad_entry_url}</a></p>'
+                f'<p><a href="{nomad_url}" target="_blank" style="color:#1976D2">{nomad_url}</a></p>'
             )
 
         # Assemble
@@ -444,7 +401,6 @@ class ElabftwClient:
             '<h2 style="color:#333;border-bottom:2px solid #1976D2;padding-bottom:8px">'
             f"\U0001f52c TGA Results: {sample_name}</h2>"
             f'<div style="display:flex;flex-wrap:wrap;gap:4px;margin:12px 0">{summary_cards}</div>'
-            f"{params_html}"
             f"{progress_html}"
             f"{steps_html}"
             f"{plot_html}"
@@ -458,8 +414,7 @@ class ElabftwClient:
             "nomad_synced": datetime.now(timezone.utc).isoformat(),
             "nomad_results": computed,
         }
-        # Preserve extra_fields from the original item and also pass at top level
-        extra_fields_out = {}
+        # Preserve extra_fields from the original item
         existing = self.get_item(item_id)
         if existing:
             emeta = existing.get("metadata", "")
@@ -467,22 +422,15 @@ class ElabftwClient:
                 try:
                     ed = json.loads(emeta)
                     if "extra_fields" in ed:
-                        ef = ed["extra_fields"]
-                        meta["extra_fields"] = ef
-                        extra_fields_out = ef
+                        meta["extra_fields"] = ed["extra_fields"]
                 except Exception:
                     pass
-            # Also check top-level extra_fields
-            if not extra_fields_out and existing.get("extra_fields"):
-                extra_fields_out = existing["extra_fields"]
-                meta["extra_fields"] = extra_fields_out
 
-        # Update item (body + metadata + extra_fields)
+        # Update item (body + metadata)
         return self.update_item(
             item_id,
             body=html_body,
             metadata=meta,
-            extra_fields=extra_fields_out if extra_fields_out else None,
         )
 
     # ── Experiment FIFO matching (kept for backward compat) ────────────────
@@ -557,13 +505,6 @@ class ElabftwClient:
             "storage_modulus": "Storage Modulus (MPa)",
             "loss_modulus": "Loss Modulus (MPa)",
             "tan_delta": "Tan δ",
-            "temp./c": "Temp (°C)",
-            "value/mg": "Weight (mg)",
-            "sample_weight/mg": "Sample Weight (mg)",
-            "time/min": "Time (min)",
-            "time/s": "Time (s)",
-            "index": "Index",
-            "delta/c/min": "Delta T/min",
         }
         cols = [k for k in col_map if k in signals and len(signals[k]) > 0]
         if not cols:
@@ -613,7 +554,7 @@ class ElabftwClient:
     ) -> bool:
         tg = computed.get("tg_glass_transition", "")
         residue = computed.get("residue_mass_pct", "")
-        onset = computed.get("onset_temperature_c", "")
+        onset = computed.get("onset_temperature", "")
         td5 = computed.get("mass_loss_5pct", "")
         td10 = computed.get("mass_loss_10pct", "")
         dtg_max = computed.get("dtg_max", "")
@@ -720,14 +661,10 @@ class ElabftwClient:
 
         # --- NOMAD link ---
         nomad_html = ""
-        # Build NOMAD entry URL
-        nomad_entry_url = nomad_url
-        if entry_id:
-            nomad_entry_url = f"https://researchmcp.duckdns.org/nomad-oasis/gui/search/entries/entry/id/{entry_id}"
-        if nomad_entry_url:
+        if nomad_url:
             nomad_html = (
                 '<h3 style="margin:16px 0 8px">NOMAD Entry</h3>'
-                f'<p><a href="{nomad_entry_url}" target="_blank" style="color:#1976D2">{nomad_entry_url}</a></p>'
+                f'<p><a href="{nomad_url}" target="_blank" style="color:#1976D2">{nomad_url}</a></p>'
             )
 
         # --- Assemble ---
@@ -736,7 +673,6 @@ class ElabftwClient:
             '<h2 style="color:#333;border-bottom:2px solid #1976D2;padding-bottom:8px">'
             f"\U0001f52c TGA Results: {sample_name}</h2>"
             f'<div style="display:flex;flex-wrap:wrap;gap:4px;margin:12px 0">{summary_cards}</div>'
-            f"{params_html}"
             f"{progress_html}"
             f"{steps_html}"
             f"{plot_html}"

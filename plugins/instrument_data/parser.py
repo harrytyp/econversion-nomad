@@ -22,7 +22,6 @@ import csv
 import io
 import re
 import os
-import openpyxl
 from datetime import datetime
 from typing import Any, Dict, List, Optional, TextIO, Tuple
 
@@ -34,9 +33,6 @@ def detect_format(filepath: str) -> Optional[str]:
 
     Returns 'tga', 'dma', 'ftir', 'ms', or None if unknown.
     """
-    if filepath.lower().endswith(".xlsx"):
-        return _detect_xlsx_format(filepath)
-
     with open(filepath, "r", encoding="utf-8", errors="replace") as f:
         head = f.read(4096)
 
@@ -61,18 +57,11 @@ def detect_format(filepath: str) -> Optional[str]:
             if "dma" in val:
                 return "dma"
 
-    # Check for TGA column headers in CSV
-    head_lower = head.lower()
-    lines = head.split("\n")
-    header_line = lines[0] if lines else ""
-    tga_indicators = ["value/mg", "temp./c", "delta/c/min", "sample weight", "weight/mg"]
-    tga_hits = sum(1 for ind in tga_indicators if ind in header_line.lower())
-    if tga_hits >= 2:
-        return "tga"
     return None
 
+
 def parse_file(filepath: str) -> Dict[str, Any]:
-    """Parse a TRIOS-exported file (CSV/TXT/XLSX).
+    """Parse a TRIOS-exported CSV/TXT file.
 
     Returns dict with:
         format: detected instrument type ('tga', 'dma', etc.)
@@ -82,9 +71,6 @@ def parse_file(filepath: str) -> Dict[str, Any]:
         columns: list of column header names
         raw_header: full header text before data section
     """
-    if filepath.lower().endswith(".xlsx"):
-        return _parse_xlsx(filepath)
-
     with open(filepath, "r", encoding="utf-8", errors="replace") as f:
         content = f.read()
 
@@ -147,156 +133,6 @@ def parse_datetime(value_str: str) -> Optional[datetime]:
 
 
 # ── Internal parsing ─────────────────────────────────────────────────────────
-
-
-# ── XLSX support ─────────────────────────────────────────────────────────────
-
-def _detect_xlsx_format(filepath: str) -> Optional[str]:
-    """Detect instrument type from xlsx file."""
-    try:
-        wb = openpyxl.load_workbook(filepath, data_only=True, read_only=True)
-        ws = wb.active
-
-        # Read first 50 rows looking for indicators
-        tga_indicators = ["weight", "mg", "temperature", "thermogravimetric", "tga"]
-        dma_indicators = ["modulus", "tan", "strain", "dynamic mechanical", "dma"]
-        ftir_indicators = ["wavenumber", "absorbance", "transmittance", "infrared"]
-        ms_indicators = ["m/z", "mass", "intensity", "mass spectrom"]
-
-        all_text = []
-        for i, row in enumerate(ws.iter_rows(max_row=50, values_only=True)):
-            for cell in row:
-                if cell:
-                    all_text.append(str(cell).lower())
-
-        wb.close()
-
-        text = " ".join(all_text)
-
-        if any(kw in text for kw in tga_indicators):
-            return "tga"
-        if any(kw in text for kw in dma_indicators):
-            return "dma"
-        if any(kw in text for kw in ftir_indicators):
-            return "ftir"
-        if any(kw in text for kw in ms_indicators):
-            return "ms"
-    except Exception:
-        pass
-
-    return None
-
-
-def _parse_xlsx(filepath: str) -> Dict[str, Any]:
-    """Parse a TRIOS xlsx export file."""
-    wb = openpyxl.load_workbook(filepath, data_only=True)
-    ws = wb.active
-
-    # Read all rows
-    all_rows = []
-    for row in ws.iter_rows(values_only=True):
-        all_rows.append([str(v) if v is not None else "" for v in row])
-
-    wb.close()
-
-    # Find the [step] header
-    step_idx = None
-    for i, row in enumerate(all_rows):
-        if row and "[step]" in str(row[0]).strip():
-            step_idx = i
-            break
-
-    if step_idx is None:
-        # Try to find header row by looking for column names
-        for i, row in enumerate(all_rows):
-            row_str = " ".join(str(v).lower() for v in row if v)
-            if any(kw in row_str for kw in ["time", "temperature", "weight"]):
-                step_idx = i - 1
-                break
-
-    if step_idx is None:
-        return {"format": None, "metadata": {}, "signals": {}, "signal_units": {}, "columns": [], "raw_header": ""}
-
-    # Parse header (everything before [step])
-    metadata = {}
-    raw_lines = []
-    for i in range(step_idx):
-        row = all_rows[i]
-        line = "\t".join(str(v) for v in row if v)
-        if not line.strip():
-            continue
-        raw_lines.append(line)
-        if "\t" in line:
-            key, _, val = line.partition("\t")
-            key_stripped = key.strip().lower().replace(" ", "_")
-            metadata[key_stripped] = val.strip()
-        elif "=" in line:
-            key, _, val = line.partition("=")
-            metadata[key.strip().lower().replace(" ", "_")] = val.strip()
-
-    # Parse step section
-    step_rows = all_rows[step_idx + 1:]
-    if not step_rows:
-        return {"format": "tga", "metadata": metadata, "signals": {}, "signal_units": {}, "columns": [], "raw_header": "\n".join(raw_lines)}
-
-    # Find column headers and units
-    columns = []
-    units = []
-    data_start = 0
-
-    for i, row in enumerate(step_rows):
-        vals = [str(v).strip() for v in row if v]
-        # Check if this looks like column headers
-        has_text = any(not v.replace(".", "").replace("-", "").replace("e", "").replace("E", "").isdigit() for v in vals)
-        if has_text and len(vals) >= 3:
-            columns = [v for v in vals]
-            # Check next row for units
-            if i + 1 < len(step_rows):
-                next_vals = [str(v).strip() for v in step_rows[i + 1] if v]
-                if len(next_vals) == len(columns) and all(_looks_like_unit(v) for v in next_vals):
-                    units = next_vals
-                    data_start = i + 2
-                else:
-                    data_start = i + 1
-            break
-
-    # Parse data rows
-    data_rows = step_rows[data_start:]
-    signals = {}
-    signal_units = {}
-
-    if columns:
-        # Create unique column names
-        col_names = []
-        seen = {}
-        for i, col in enumerate(columns):
-            col_lower = col.lower().replace(" ", "_")
-            if col_lower in seen:
-                seen[col_lower] += 1
-                col_lower = f"{col_lower}_{seen[col_lower]}"
-            else:
-                seen[col_lower] = 1
-            col_names.append(col_lower)
-            signals[col_lower] = []
-
-        for row in data_rows:
-            for j, col_name in enumerate(col_names):
-                if j < len(row):
-                    try:
-                        val = float(str(row[j]).strip())
-                        signals[col_name].append(val)
-                    except (ValueError, IndexError):
-                        signals[col_name].append(float("nan"))
-
-    return {
-        "format": _detect_xlsx_format(filepath),
-        "metadata": metadata,
-        "signals": signals,
-        "signal_units": {k: "" for k in signals},
-        "columns": list(signals.keys()),
-        "raw_header": "\n".join(raw_lines)
-    }
-
 
 def _split_sections(lines: List[str]) -> Tuple[List[str], Optional[List[str]], Optional[str]]:
     """Split file lines into header and data sections.
@@ -366,36 +202,20 @@ def _find_data_section(header_lines: List[str]) -> Tuple[List[str], List[str], L
 
     for i, line in enumerate(header_lines):
         stripped = line.strip()
-        # Skip key-value header lines and blank lines
-        if not stripped:
-            continue
-        if stripped.startswith("["):
-            continue
-        if "\t" not in stripped:
-            continue
-        # Look for a row that looks like column headers (has text, not purely numeric)
-        parts = stripped.split("\t")
-        # Only accept lines with 3+ columns (rules out key-value pairs)
-        if len(parts) < 3:
-            continue
-        has_text = any(not p.strip().replace(".","").replace("-","").replace("e","").replace("E","").isdigit() for p in parts)
-        if not has_text:
-            continue
-        # Found potential column header row
-        # Check if next line looks like units
-        if i + 1 < len(header_lines):
-            next_parts = header_lines[i + 1].strip().split("\t")
-            if len(next_parts) == len(parts) and all(
-                _looks_like_unit(p) for p in next_parts
-            ):
-                columns = [c.strip() for c in parts]
-                units = [u.strip() for u in next_parts]
-                data_start = i + 2
-                break
-        # No units row - this line IS the column header
-        columns = [c.strip() for c in parts]
-        data_start = i + 1
-        break
+        # Look for a row that looks like column headers (alphabetic + special chars)
+        if stripped and "\t" in stripped and not stripped.startswith("["):
+            parts = stripped.split("\t")
+            # Check if next line looks like units
+            if i + 1 < len(header_lines):
+                next_line = header_lines[i + 1].strip()
+                next_parts = next_line.split("\t")
+                if len(next_parts) == len(parts) and all(
+                    _looks_like_unit(p) for p in next_parts
+                ):
+                    columns = parts
+                    units = next_parts
+                    data_start = i + 2
+                    break
 
     data_lines = header_lines[data_start:] if data_start else []
     return data_lines, columns, units
@@ -529,8 +349,8 @@ def extract_tga_metadata(metadata: Dict[str, Any]) -> Dict[str, Any]:
             result["sample_name"] = metadata[key]
             break
 
-    # Mass (also check sample_weight)
-    for key in ["sample_mass", "sample mass", "sample_weight", "sample weight"]:
+    # Mass
+    for key in ["sample_mass", "sample mass"]:
         if key in metadata:
             val, unit = normalize_mass_unit(metadata[key])
             result["sample_mass"] = val
@@ -553,24 +373,6 @@ def extract_tga_metadata(metadata: Dict[str, Any]) -> Dict[str, Any]:
     for key in ["instrument_name", "instrument name"]:
         if key in metadata:
             result["instrument_name"] = metadata[key]
-            break
-
-    # Gas atmosphere
-    for key in ["gas_atmosphere", "gas atmosphere", "gas_type", "gas type"]:
-        if key in metadata:
-            result["gas_atmosphere"] = metadata[key]
-            break
-
-    # Heating rate
-    for key in ["heating_rate", "heating rate"]:
-        if key in metadata:
-            result["heating_rate"] = metadata[key]
-            break
-
-    # Temperature end
-    for key in ["temperature_end", "temperature end"]:
-        if key in metadata:
-            result["temperature_end"] = metadata[key]
             break
 
     # Procedure

@@ -42,7 +42,7 @@ class TgaParser(MatchingParser):
             name='parsers/tga',
             code_name='TGA Parser',
             domain=None,
-            mainfile_mime_re='text/.*',
+            mainfile_mime_re='.*',
             mainfile_name_re=r'.*\.(txt|csv|dat|xlsx|xls)$',
             level=0,
         )
@@ -58,6 +58,11 @@ class TgaParser(MatchingParser):
         # Skip empty files
         import sys as _sys; print(f"[TGAParser] is_mainfile called", file=_sys.stderr, flush=True)
         if not decoded_buffer:
+            # Accept xlsx files by extension and MIME type
+            if filename.lower().endswith((".xlsx", ".xls")):
+                return True
+            if "spreadsheet" in (mime or ""):
+                return True
             return False
 
         head = decoded_buffer[:4096].lower()
@@ -111,7 +116,7 @@ class TgaParser(MatchingParser):
 
         # Create the measurement section
         tga = TgaMeasurement()
-        tga.m_def = 'instrument_data.schema:TgaMeasurement'
+        # tga.m_def is set via the EntryArchive entry_type instead
 
         # Sample info
         tga.sample = InstrumentSample()
@@ -134,15 +139,28 @@ class TgaParser(MatchingParser):
         tga.instrument_name = metadata.get('instrument_name', '')
         tga.instrument_type = metadata.get('instrument_type', '')
 
-        # Signal data
+        # Signal data (wrap in dict so JSON type accepts lists)
         if 'temperature' in signals:
-            tga.temperature_signal = signals['temperature']
+            tga.temperature_signal = {'values': signals['temperature']}
         weight_key = 'weight' if 'weight' in signals else ('mass' if 'mass' in signals else None)
         if weight_key:
-            tga.weight_signal = signals[weight_key]
+            tga.weight_signal = {'values': signals[weight_key]}
         if 'dta' in signals:
-            tga.dta_signal = signals['dta']
+            tga.dta_signal = {'values': signals['dta']}
 
+        # Add elabFTW reference if available
+        elab_item_id = None
+        import re as _re_elab
+        _m = _re_elab.search(r'item([0-9]+)', Path(mainfile).stem)
+        if _m:
+            elab_item_id = _m.group(1)
+            elab_url = f'https://elntest.ub.tum.de/database.php?mode=view&id={elab_item_id}'
+            # Store elabFTW URL in entry references
+            refs = list(archive.metadata.references or [])
+            if elab_url not in refs:
+                refs.append(elab_url)
+                archive.metadata.references = refs
+        
         # Computed results
         summary = computed.get('summary', {})
         tga.results = TgaResults()

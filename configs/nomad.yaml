@@ -8,13 +8,15 @@ oasis:
 
 plugins:
   entry_points:
+    exclude:
+      - "apps/*"
+      - "example_uploads/*"
     options:
       nomad_north_jupyter.north_tools:jupyter:
         north_tool:
           image: ghcr.io/fairmat-nfdi/nomad-north-jupyter:latest
       instrument_data.entrypoint:instrument_schema:
         plugin_type: schema
-      instrument_data.entrypoint:tga_parser_entry_point:
         plugin_type: parser
 
 meta:
